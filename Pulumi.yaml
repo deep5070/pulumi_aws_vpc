@@ -1,0 +1,93 @@
+variables:
+  cidr_public: 172.0.0.0/24 
+name: awsx-vpc-cidr-yaml
+runtime: yaml
+description: An example that creates a new VPC and configuring a custom CIDR block.
+resources:
+  # Allocate a new VPC with a custom CIDR block.
+  pulumi_vpc:
+    type: aws:ec2:Vpc
+    properties:
+      cidrBlock: 172.0.0.0/16
+      tags:
+        name: pulumi-new-vpc
+  pulumi_gw:
+    type: aws:ec2:InternetGateway
+    properties:
+      vpcId: ${pulumi_vpc.id}
+      tags:
+        Name: pulumi_igw 
+  public_subnet:
+    type: aws:ec2:Subnet
+    properties:
+      vpcId: ${pulumi_vpc.id}
+      cidrBlock: "${cidr_public}"
+      mapPublicIpOnLaunch: true
+      availabilityZone: us-east-1a
+      tags:
+        Name: public_subnet_1
+  public_route_table:
+    type: aws:ec2:RouteTable
+    properties:
+      vpcId: ${pulumi_vpc.id}
+      tags:
+        Name: public_route_table_1
+    options:    
+      dependsOn:
+       - ${pulumi_gw} 
+  public_route:
+    type: aws:ec2:Route
+    properties:
+      routeTableId: ${public_route_table.id}
+      gatewayId: ${pulumi_gw.id} 
+      destinationCidrBlock: 0.0.0.0/0
+    options:
+       dependsOn:
+         - ${public_route_table}
+  public_route_association:
+    type: aws:ec2:RouteTableAssociation
+    properties:
+      subnetId: ${public_subnet}
+      routeTableId: ${public_route_table.id}
+  security_group_attached:
+    type: aws:ec2:SecurityGroup    
+    properties:
+      vpcId: ${pulumi_vpc.id}
+      ingress:
+        - fromPort: 80
+          toPort: 80
+          protocol: 'tcp'
+          cidrBlocks:
+            - 0.0.0.0/0
+        - fromPort: 22
+          toPort: 22
+          protocol: 'tcp'
+          cidrBlocks:
+            - 0.0.0.0/0
+        - fromPort: 22
+          toPort: 22
+          protocol: 'tcp'
+          cidrBlocks:
+            - 0.0.0.0/0
+      egress:
+        - fromPort: 80
+          toPort: 80
+          protocol: 'tcp'
+          cidrBlocks:
+            - 0.0.0.0/0
+        - fromPort: 22
+          toPort: 22
+          protocol: 'tcp'
+          cidrBlocks:
+            - 0.0.0.0/0
+        - fromPort: 22
+          toPort: 22
+          protocol: 'tcp'
+          cidrBlocks:
+            - 0.0.0.0/0
+      tags:
+        Name: public_security_group_1    
+
+
+
+
